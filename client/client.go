@@ -48,6 +48,15 @@ func Run() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
+		err := viper.ReadInConfig() // Find and read the config file
+		if err != nil {             // Handle errors reading the config file
+			log.Fatalln("Failed to", err)
+			//panic(fmt.Errorf("client_config.cfg file does not exist: %s \n", err))
+		}
+		if err := viper.Unmarshal(&fileConf); err != nil {
+			fmt.Printf("couldn't read config: %s", err)
+		}
+		viper.WatchConfig()
 		t = viper.GetStringSlice("logfiles")
 		//test.Kill(errors.New("Killed old goroutine"))
 		test.Kill(nil)
