@@ -31,9 +31,9 @@ var config = tail.Config{
 var fileConf fileConfig
 var t []string
 var test *tail.Tail
+var c = make(chan string)
 
 func Run() {
-	c := make(chan string)
 	viper.SetConfigFile("client_config.cfg")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("../")
@@ -48,18 +48,10 @@ func Run() {
 	viper.WatchConfig()
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		fmt.Println("Config file changed:", e.Name)
-		err := viper.ReadInConfig() // Find and read the config file
-		if err != nil {             // Handle errors reading the config file
-			log.Fatalln("Failed to", err)
-			//panic(fmt.Errorf("client_config.cfg file does not exist: %s \n", err))
-		}
-		if err := viper.Unmarshal(&fileConf); err != nil {
-			fmt.Printf("couldn't read config: %s", err)
-		}
-		viper.WatchConfig()
 		t = viper.GetStringSlice("logfiles")
-		close(c)
-		go tailFile(&t, c, &config)
+		//test.Kill(errors.New("Killed old goroutine"))
+		test.Kill(nil)
+		go tailFile(t, config)
 
 	})
 
@@ -70,7 +62,7 @@ func Run() {
 	//go tailFile(v, c, &config)
 	//}
 	t = viper.GetStringSlice("logfiles")
-	go tailFile(&t, c, &config)
+	go tailFile(t, config)
 
 	for {
 		// Create connection towards SERVER
@@ -112,10 +104,10 @@ func tcpReconnect() net.Conn {
 }
 
 // tailFile function used to tail provided files
-func tailFile(s *[]string, c chan string, config *tail.Config) {
-	for _, x := range *s {
+func tailFile(s []string, config tail.Config) {
+	for _, x := range s {
 		fmt.Println("Log for tail is: ", x)
-		test, err := tail.TailFile(x, *config)
+		test, err := tail.TailFile(x, config)
 		if err != nil {
 			panic(err)
 		}
@@ -132,7 +124,7 @@ func alarmsCheck(s *string, b *[]string) bool {
 		// Ignore Alarms from config file
 		if strings.TrimSpace(v) == *s {
 			a = true
-			fmt.Printf("%v", v)
+			fmt.Println(v)
 		}
 	}
 	// Return filtered alarms to server
