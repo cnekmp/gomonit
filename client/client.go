@@ -30,8 +30,10 @@ var config = tail.Config{
 
 var fileConf fileConfig
 var t []string
+var test *tail.Tail
 
 func Run() {
+	c := make(chan string)
 	viper.SetConfigFile("client_config.cfg")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("../")
@@ -56,11 +58,12 @@ func Run() {
 		}
 		viper.WatchConfig()
 		t = viper.GetStringSlice("logfiles")
+		close(c)
+		go tailFile(&t, c, &config)
 
 	})
 
 	fmt.Println(fileConf.Hostname, fileConf.Logfiles)
-	c := make(chan string)
 
 	// Start goroutines for tailing provided files
 	//for _, v := range viper.GetStringSlice("logfiles") {
@@ -112,11 +115,11 @@ func tcpReconnect() net.Conn {
 func tailFile(s *[]string, c chan string, config *tail.Config) {
 	for _, x := range *s {
 		fmt.Println("Log for tail is: ", x)
-		t, err := tail.TailFile(x, *config)
+		test, err := tail.TailFile(x, *config)
 		if err != nil {
 			panic(err)
 		}
-		for line := range t.Lines {
+		for line := range test.Lines {
 			c <- line.Text
 		}
 	}
